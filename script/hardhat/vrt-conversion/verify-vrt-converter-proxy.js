@@ -12,7 +12,7 @@ const main = async () => {
     const vrtAddress = contractConfigData.Contracts.VRT;
     const xvsAddress = contractConfigData.Contracts.XVS;
     const conversionRatio = bnbMantissa(0.000083);
-    const conversionStartTime = 1645761945;
+    const conversionStartTime = 1646806866;
     const conversionPeriod = 360 * 24 * 60 * 60;
 
     const vrtConverterConstructorArgumentArray = [vrtConverterAddress, vrtAddress, xvsAddress,
