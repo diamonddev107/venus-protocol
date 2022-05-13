@@ -18,6 +18,9 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterfaceG2, Comptrolle
     /// @notice Emitted when an admin supports a market
     event MarketListed(VToken vToken);
 
+    /// @notice Emitted when an admin delist a market
+    event MarketToggled(VToken vToken, bool status);
+
     /// @notice Emitted when an account enters a market
     event MarketEntered(VToken vToken, address account);
 
@@ -43,13 +46,7 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterfaceG2, Comptrolle
     event NewPauseGuardian(address oldPauseGuardian, address newPauseGuardian);
 
     /// @notice Emitted when an action is paused globally
-    event ActionPaused(string action, bool pauseState);
-
-    /// @notice Emitted when an action is paused on a market
     event ActionPausedMarket(VToken vToken, string action, bool pauseState);
-
-    /// @notice Emitted when Venus VAI rate is changed
-    event NewVenusVAIRate(uint oldVenusVAIRate, uint newVenusVAIRate);
 
     /// @notice Emitted when Venus VAI Vault rate is changed
     event NewVenusVAIVaultRate(uint oldVenusVAIVaultRate, uint newVenusVAIVaultRate);
@@ -118,9 +115,8 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterfaceG2, Comptrolle
         admin = msg.sender;
     }
 
-    modifier onlyProtocolAllowed {
+    function ensureOnlyProtocolAllowed() private {
         require(!protocolPaused, "protocol is paused");
-        _;
     }
 
     function ensureAdmin() private {
@@ -131,15 +127,13 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterfaceG2, Comptrolle
         require(someone != address(0), "can't be zero address");
     }
 
-    modifier onlyListedMarket(VToken vToken) {
-        require(markets[address(vToken)].isListed, "venus market is not listed");
-        _;
+    function ensureMarketListed(VToken token) private {
+        require(markets[address(token)].isListed, "venus market is not listed");
     }
 
-    modifier validPauseState(bool state) {
+    function validPauseState(bool state) private {
         require(msg.sender == pauseGuardian || msg.sender == admin, "only pause guardian and admin can");
         require(msg.sender == admin || state, "only admin can unpause");
-        _;
     }
 
     /*** Assets You Are In ***/
@@ -275,7 +269,8 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterfaceG2, Comptrolle
      * @param mintAmount The amount of underlying being supplied to the market in exchange for tokens
      * @return 0 if the mint is allowed, otherwise a semi-opaque error code (See ErrorReporter.sol)
      */
-    function mintAllowed(address vToken, address minter, uint mintAmount) external onlyProtocolAllowed returns (uint) {
+    function mintAllowed(address vToken, address minter, uint mintAmount) external returns (uint) {
+        ensureOnlyProtocolAllowed();
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!mintGuardianPaused[vToken], "mint is paused");
 
@@ -315,7 +310,8 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterfaceG2, Comptrolle
      * @param redeemTokens The number of vTokens to exchange for the underlying asset in the market
      * @return 0 if the redeem is allowed, otherwise a semi-opaque error code (See ErrorReporter.sol)
      */
-    function redeemAllowed(address vToken, address redeemer, uint redeemTokens) external onlyProtocolAllowed returns (uint) {
+    function redeemAllowed(address vToken, address redeemer, uint redeemTokens) external returns (uint) {
+        ensureOnlyProtocolAllowed();
         uint allowed = redeemAllowedInternal(vToken, redeemer, redeemTokens);
         if (allowed != uint(Error.NO_ERROR)) {
             return allowed;
@@ -373,7 +369,8 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterfaceG2, Comptrolle
      * @param borrowAmount The amount of underlying the account would borrow
      * @return 0 if the borrow is allowed, otherwise a semi-opaque error code (See ErrorReporter.sol)
      */
-    function borrowAllowed(address vToken, address borrower, uint borrowAmount) external onlyProtocolAllowed returns (uint) {
+    function borrowAllowed(address vToken, address borrower, uint borrowAmount) external returns (uint) {
+        ensureOnlyProtocolAllowed();
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!borrowGuardianPaused[vToken], "borrow is paused");
 
@@ -450,7 +447,8 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterfaceG2, Comptrolle
         address vToken,
         address payer,
         address borrower,
-        uint repayAmount) external onlyProtocolAllowed returns (uint) {
+        uint repayAmount) external returns (uint) {
+        ensureOnlyProtocolAllowed();
         // Shh - currently unused
         payer;
         borrower;
@@ -507,7 +505,8 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterfaceG2, Comptrolle
         address vTokenCollateral,
         address liquidator,
         address borrower,
-        uint repayAmount) external onlyProtocolAllowed returns (uint) {
+        uint repayAmount) external returns (uint) {
+        ensureOnlyProtocolAllowed();
         if (liquidatorContract != address(0) && liquidator != liquidatorContract) {
             return uint(Error.UNAUTHORIZED);
         }
@@ -583,7 +582,8 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterfaceG2, Comptrolle
         address vTokenBorrowed,
         address liquidator,
         address borrower,
-        uint seizeTokens) external onlyProtocolAllowed returns (uint) {
+        uint seizeTokens) external returns (uint) {
+        ensureOnlyProtocolAllowed();
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!seizeGuardianPaused, "seize is paused");
 
@@ -642,7 +642,8 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterfaceG2, Comptrolle
      * @param transferTokens The number of vTokens to transfer
      * @return 0 if the transfer is allowed, otherwise a semi-opaque error code (See ErrorReporter.sol)
      */
-    function transferAllowed(address vToken, address src, address dst, uint transferTokens) external onlyProtocolAllowed returns (uint) {
+    function transferAllowed(address vToken, address src, address dst, uint transferTokens) external returns (uint) {
+        ensureOnlyProtocolAllowed();
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!transferGuardianPaused, "transfer is paused");
 
@@ -950,6 +951,27 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterfaceG2, Comptrolle
         return uint(Error.NO_ERROR);
     }
 
+    function _setMintPaused(VToken vToken, bool state) public {
+        validPauseState(state);
+        ensureMarketListed(vToken);
+        mintGuardianPaused[address(vToken)] = state;
+        emit ActionPausedMarket(vToken, "Mint", state);
+    }
+
+    function _setBorrowPaused(VToken vToken, bool state) public {
+        validPauseState(state);
+        ensureMarketListed(vToken);
+        borrowGuardianPaused[address(vToken)] = state;
+        emit ActionPausedMarket(vToken, "Borrow", state);
+    }
+
+    function _setMarketListed(VToken vToken, bool state) external {
+        validPauseState(state);
+        ensureMarketListed(vToken);
+        markets[address(vToken)].isListed = state;
+        emit MarketToggled(vToken, state);
+    }
+
     /**
       * @notice Set the given borrow caps for the given vToken markets. Borrowing that brings total borrows to or above borrow cap will revert.
       * @dev Admin or borrowCapGuardian function to set the borrow caps. A borrow cap of 0 corresponds to unlimited borrowing.
@@ -991,7 +1013,8 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterfaceG2, Comptrolle
     /**
      * @notice Set whole protocol pause/unpause state
      */
-    function _setProtocolPaused(bool state) external validPauseState(state) returns(bool) {
+    function _setProtocolPaused(bool state) external returns(bool) {
+        validPauseState(state);
         protocolPaused = state;
         emit ActionProtocolPaused(state);
         return state;
@@ -1004,10 +1027,7 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterfaceG2, Comptrolle
       */
     function _setVAIController(VAIControllerInterface vaiController_) external returns (uint) {
         // Check caller is admin
-        if (msg.sender != admin) {
-            return fail(Error.UNAUTHORIZED, FailureInfo.SET_VAICONTROLLER_OWNER_CHECK);
-        }
-
+        ensureAdmin();
         ensureNonzeroAddress(address(vaiController_));
 
         VAIControllerInterface oldVaiController = vaiController;
@@ -1427,7 +1447,8 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterfaceG2, Comptrolle
      * @param amount The amount of VAI to set to the account
      * @return The number of minted VAI by `owner`
      */
-    function setMintedVAIOf(address owner, uint amount) external onlyProtocolAllowed returns (uint) {
+    function setMintedVAIOf(address owner, uint amount) external returns (uint) {
+        ensureOnlyProtocolAllowed();
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!mintVAIGuardianPaused && !repayVAIGuardianPaused, "VAI is paused");
         // Check caller is vaiController
