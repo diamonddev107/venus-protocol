@@ -10,6 +10,7 @@ export interface VenusLensMethods {
   vTokenUnderlyingPrice(vToken: string): Sendable<[string,number]>;
   vTokenUnderlyingPriceAll(vTokens: string[]): Sendable<[string,number][]>;
   getAccountLimits(comptroller: string, account: string): Sendable<[string[],number,number]>;
+  getAggregatedVenusSpeedAndSupply(): Callable<[number,number,number,number]>
 }
 
 export interface VenusLens extends Contract {
