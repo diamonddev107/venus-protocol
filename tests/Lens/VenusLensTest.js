@@ -22,20 +22,12 @@ function cullTuple(tuple) {
 
 describe('VenusLens', () => {
   let VenusLens;
-  let acct, vXvsToken, vXvsTokenAddress;
+  let acct;
 
   beforeEach(async () => {
     //deploy XVS
-    vXvsToken = await makeVToken();
-    vXvsTokenAddress = vXvsToken._address;
-    VenusLens = await deploy('VenusLens', [vXvsTokenAddress]);
+    VenusLens = await deploy('VenusLens');
     acct = accounts[0];
-  });
-
-  describe('VenusLens', () => {
-    it('is Initialised with vXvsTokenAddress', async () => {
-      expect(await call(VenusLens, 'vXvsTokenAddress')).toEqual(vXvsTokenAddress);
-    });
   });
 
   describe('vTokenMetadata', () => {
@@ -61,8 +53,8 @@ describe('VenusLens', () => {
           underlyingDecimals: "18",
           venusSupplySpeed: "0",
           venusBorrowSpeed: "0",
-          dailySupplyVenus: "0",
-          dailyBorrowVenus: "0"
+          dailySupplyXvs: "0",
+          dailyBorrowXvs: "0"
         }
       );
     });
@@ -88,8 +80,8 @@ describe('VenusLens', () => {
         underlyingDecimals: "18",
         venusSupplySpeed: "0",
         venusBorrowSpeed: "0",
-        dailySupplyVenus: "0",
-        dailyBorrowVenus: "0"
+        dailySupplyXvs: "0",
+        dailyBorrowXvs: "0"
       });
     });
   });
@@ -118,8 +110,8 @@ describe('VenusLens', () => {
           underlyingDecimals: "18",
           venusSupplySpeed: "0",
           venusBorrowSpeed: "0",
-          dailySupplyVenus: "0",
-          dailyBorrowVenus: "0",
+          dailySupplyXvs: "0",
+          dailyBorrowXvs: "0",
         },
         {
           borrowRatePerBlock: "0",
@@ -138,8 +130,8 @@ describe('VenusLens', () => {
           underlyingDecimals: "18",
           venusSupplySpeed: "0",
           venusBorrowSpeed: "0",
-          dailySupplyVenus: "0",
-          dailyBorrowVenus: "0",
+          dailySupplyXvs: "0",
+          dailyBorrowXvs: "0",
         }
       ]);
     });

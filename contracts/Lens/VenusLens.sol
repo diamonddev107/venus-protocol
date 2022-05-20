@@ -8,6 +8,7 @@ import "../EIP20Interface.sol";
 import "../Governance/GovernorAlpha.sol";
 import "../Governance/XVS.sol";
 import "../Comptroller.sol";
+import "../SafeMath.sol";
 
 interface LensInterface {
     function markets(address) external view returns (bool, uint);
@@ -20,14 +21,16 @@ interface LensInterface {
 
 contract VenusLens {
 
+    using SafeMath for uint;
+
     /// @notice Blocks Per Day
     uint public constant BLOCKS_PER_DAY = 28800;
 
-    /// @notice vXvsToken Address
-    address public vXvsTokenAddress;
+    /// @notice comptrollerAddress
+    address public comptrollerAddress;
 
-    constructor(address _vXvsTokenAddress) public {
-        vXvsTokenAddress = _vXvsTokenAddress;
+    constructor(address _comptrollerAddress) public {
+        comptrollerAddress = _comptrollerAddress;
     }
 
     struct VTokenMetadata {
@@ -47,8 +50,8 @@ contract VenusLens {
         uint underlyingDecimals;
         uint venusSupplySpeed;
         uint venusBorrowSpeed;
-        uint dailySupplyVenus;
-        uint dailyBorrowVenus;
+        uint dailySupplyXvs;
+        uint dailyBorrowXvs;
     }
 
     function vTokenMetadata(VToken vToken) public returns (VTokenMetadata memory) {
@@ -69,7 +72,7 @@ contract VenusLens {
         }
 
         Comptroller comptrollerInstance = Comptroller(comptrollerAddress);
-        uint venusSpeed_Per_Block = comptrollerInstance.venusSpeeds(vXvsTokenAddress);
+        uint venusSpeed_Per_Block = comptrollerInstance.venusSpeeds(address(vToken));
 
         return VTokenMetadata({
             vToken: address(vToken),
@@ -88,8 +91,8 @@ contract VenusLens {
             underlyingDecimals: underlyingDecimals,
             venusSupplySpeed: venusSpeed_Per_Block,
             venusBorrowSpeed: venusSpeed_Per_Block,
-            dailySupplyVenus: venusSpeed_Per_Block * BLOCKS_PER_DAY,
-            dailyBorrowVenus: venusSpeed_Per_Block * BLOCKS_PER_DAY
+            dailySupplyXvs: venusSpeed_Per_Block * BLOCKS_PER_DAY,
+            dailyBorrowXvs: venusSpeed_Per_Block * BLOCKS_PER_DAY
         });
     }
 
@@ -101,6 +104,31 @@ contract VenusLens {
         }
         return res;
     }
+
+    function getAggregatedVenusSpeedAndSupply() external view returns (uint venusSupplySpeed, uint venusBorrowSpeed, uint dailySupplyXvs, uint dailyBorrowXvs) {
+
+        Comptroller comptrollerInstance = Comptroller(comptrollerAddress);
+        VToken[] memory vTokens = comptrollerInstance.getAllMarkets();
+        uint venusSpeed_Per_Block_Sum = 0;
+        uint256 numberOfVTokens = vTokens.length;
+        
+        for (uint i = 0; i < vTokens.length; i++) {
+            VToken vToken = vTokens[i];
+            uint venusSpeedPerBlock = comptrollerInstance.venusSpeeds(address(vToken));
+            venusSpeed_Per_Block_Sum += venusSpeedPerBlock;
+        }
+
+        uint venusSpeedAggregated = venusSpeed_Per_Block_Sum.div(numberOfVTokens);
+        venusSupplySpeed = venusSpeedAggregated;
+        venusBorrowSpeed = venusSpeedAggregated;
+        
+        uint dailyXvs = venusSpeedAggregated * BLOCKS_PER_DAY;
+        dailySupplyXvs = dailyXvs;
+        dailyBorrowXvs = dailyXvs;
+
+        return (venusSupplySpeed, venusBorrowSpeed, dailySupplyXvs, dailyBorrowXvs);
+    }
+
 
     struct VTokenBalances {
         address vToken;
